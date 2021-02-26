@@ -397,18 +397,20 @@ async def addWishlist(context):
         return
         
     # Read the database spreadsheet:
-    print(fileLoc)
-    
     wardMatrix = pandas.read_excel(fileLoc)
     print(wardMatrix)
+    # Fix collumn types:
     wardMatrix = wardMatrix.astype({'Listing Time': str})
     wardMatrix = wardMatrix.astype({'ListingID': str})
     wardMatrix = wardMatrix.astype({'Wish List': str})
     
+    # Get author's id so we can ping them later:
     author = context.author.id
     
+    # Grab the current wishlist and search it for the author:
     wishes = wardMatrix.at[pNum-1,'Wish List']
-    print(wishes)
+    
+    # If they're already on the wishlist tell them they're in trouble.
     breakout = 0
     if str(author) in wishes:
         breakout = 1;
@@ -416,14 +418,14 @@ async def addWishlist(context):
         await context.send("You have already wishlisted this plot.")
         return
     
+    # Else, add them with a delimiter of "**"
     wishes = wishes + "**" + str(author);
-    print(wishes)
     
+    # Add that long string to the database
     wardMatrix.at[pNum-1,'Wish List'] = wishes
     
     # Save edited database:
     wardMatrix.to_excel(fileLoc, "Sheet1", index = False, header = True, engine='xlsxwriter')
-    
     return
     
 async def removeWishlist(context):
@@ -442,8 +444,11 @@ async def removeWishlist(context):
     wardMatrix = wardMatrix.astype({'Listing Time': str})
     wardMatrix = wardMatrix.astype({'ListingID': str})
     wardMatrix = wardMatrix.astype({'Wish List': str})
+    
+    # Get author's id so we can if they're on the list:
     author = context.author.id
     
+    # If they're not on the wishlist tell them they're in trouble.
     wishes = wardMatrix.at[pNum-1,"Wish List"]
     breakout = 0
     if not str(author) in wishes:
@@ -451,9 +456,10 @@ async def removeWishlist(context):
     if breakout == 1:
         await context.send("You have not wished for this plot.")
         return
+    # Otherwise, remove them:
     wishes = wishes.replace("**" + str(author),'')
-    print(wishes)
     
+    # Edit the existing wishlist.
     wardMatrix.at[pNum-1,"Wish List"] = wishes
 
     # Save edited database:
@@ -560,12 +566,19 @@ async def formatPT(inStr):
     return ptTime, ampm
 
 async def checkWish(context,wardMatrix,pNum):
+    # Load the wishlist:
     wishes = wardMatrix.at[pNum-1,"Wish List"]
+    # Get all the wishers:
     toCalls = wishes.split("**")
+    # call them up:
     for i in toCalls:
         if i.isnumeric():
-            m = await bot.fetch_user(int(i))
-            await context.send("This plot is on your wishlist, " + m.mention + ".")
+            # I know that this is going to fail at some point, so...
+            try:
+                m = await bot.fetch_user(int(i))
+                await context.send("This plot is on your wishlist, " + m.mention + ".")
+            except:
+                print("Ran into a wishlist error.")
 
     return
 
