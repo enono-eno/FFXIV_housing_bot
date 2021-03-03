@@ -88,7 +88,6 @@ async def exampleFunction(context):
     return
     
 # Commands that call for listing properties:
-# open, list, and forsale all do the same thing:
 @bot.command(pass_context = True , aliases=['open','Open', 'list', 'List', 'forsale', 'Forsale', 'ForSale'])
 async def open_plot(context):
     """List a house as being open for purchase."""
@@ -97,13 +96,13 @@ async def open_plot(context):
     return
     
 # Commands that call for unlisting properties:
-# close, unlist and sold all do the same thing:
 @bot.command(pass_context = True , aliases=['close','Close', 'unlist', 'Unlist', 'sold', 'Sold', 'sell', 'Sell'])  
 async def close_plot(context):
     """List a house as being closed to purchases."""
     await closeInternal(context)  
     return
-    
+
+# These ask for a sweep report.    
 @bot.command(pass_context = True , aliases=['Sweep','report','Report', ])      
 async def sweep(context):
     """Display a readout of current server status in terms of open plots."""
@@ -123,6 +122,15 @@ async def unwish(context):
     await removeWishlist(context) 
     return
 
+## Events: 
+#for message cleanups:
+@bot.event
+async def on_reaction_add(reaction, user):
+    msg = reaction.message
+    if msg.author.id == bot.user.id:
+        if reaction.emoji == '\U0000274C':
+            await msg.delete()
+  
 ## Internal Commands:
 async def openInternal(context):
     # Figure out what DC and Server we're in:
@@ -267,6 +275,46 @@ async def closeInternal(context):
     # Save edited database:
     wardMatrix.to_excel(fileLoc, "Sheet1", index = False, header = True, engine='xlsxwriter')
     
+    # Write the log entry:
+    tz = pytz.timezone('EST')
+    now = datetime.now(tz)
+    ptTime = now.hour 
+    ptZone = 'am'
+    if ptTime > 23:
+        ptTime = ptTime - 24
+    if ptTime > 11:
+        ptZone = 'pm'
+    if ptTime > 12:
+        ptTime = ptTime - 12
+    nhour = now.hour
+    if nhour > 12:
+        nhour = nhour - 12
+    
+    logLoc  = await getLogfile(context)
+    logfile = open(logLoc,'a+') 
+    
+    logfile.write("[" + str(now.month) + "-" + str(now.day) + "-" + str(now.year) + " " + str(now.hour) + ":" + str(now.minute)  + "] ")
+    logfile.write(district.capitalize() + " Ward " + str(wNum).zfill(2) + " Plot " + str(pNum).zfill(2) + " [" + wardMatrix.at[pNum-1,'Size'] + "] was sold at " + str(nhour).zfill(2) + ":" + str(now.minute).zfill(2) + ptZone)
+    
+    # how long was it up?
+    LT = wardMatrix.at[pNum-1,'Listing Time']
+    sp = str(LT).split("/")
+    lMon = int(sp[0])    
+    lDay = int(sp[1])
+    lHour = int(sp[2])
+    qual = ""
+    # this definitely isn't perfect...
+    if now.day > lDay:
+        lHour = lHour - 24
+    if now.month > lMon:
+        qual = " or more"
+    listHours = now.hour - lHour
+    
+    logfile.write(" after being listed for " + str(listHours) + qual + " hours." + '\n')
+    wardMatrix.at[pNum-1,'Listing Time']
+    
+    logfile.close() 
+    
     # Done!
     return
  
@@ -327,7 +375,7 @@ async def serverStatus(context):
         gString = gString[:-1] + "."
     if nGobs == 0:
         gString = "No plots available."
-    gString = "[" + str(nGobs) + "] " + '\U0001F335' + " Goblet: " + gString + '\n'
+    gString = "[" + str(nGobs) + "] " + '\U00002600' + " Goblet: " + gString + '\n'
     
     print("Sweep report being generated for Lavender Beds...")
     lbFiles = fileLoc + "LavenderBeds/"
@@ -351,7 +399,7 @@ async def serverStatus(context):
         lbString = lbString[:-1] + "."
     if nLavs == 0:
         lbString = "No plots available."
-    lbString = "[" + str(nLavs) + "] " + '\U0001F333' + " Lavender Beds: " + lbString + '\n'
+    lbString = "[" + str(nLavs) + "] " + '\U0001f490' + " Lavender Beds: " + lbString + '\n'
     
     print("Sweep report being generated for Mist...")
     mFiles = fileLoc + "Mist/"
@@ -401,10 +449,12 @@ async def serverStatus(context):
         shString = "No plots available."
     shString = "[" + str(nShiros) + "] " + '\U000026E9' + "Shirogane: " + shString + '\n'
     
-    #header = "__Sweep Report: " + str(totalPlots) + " plots are available. <all prime times are EST>" + "__" + '\n'
+    
+    
+    header = "__Sweep Report: " + str(totalPlots) + " plot(s) available. <all prime times are EST>" + "__" + '\n'
     
     print('Sending report...')
-    # await context.send(header + gString + lbString + mString + shString)
+    await context.send(header + gString + lbString + mString + shString)
     return
     
 async def addWishlist(context):
@@ -434,6 +484,7 @@ async def addWishlist(context):
         breakout = 1;
     if breakout == 1:
         await context.send("You have already wishlisted this plot.")
+        await context.message.add_reaction('\U0000274C')
         return
     
     # Else, add them with a delimiter of "**"
@@ -444,6 +495,8 @@ async def addWishlist(context):
     
     # Save edited database:
     wardMatrix.to_excel(fileLoc, "Sheet1", index = False, header = True, engine='xlsxwriter')
+    
+    await context.message.add_reaction('\U0001F320')
     return
     
 async def removeWishlist(context):
@@ -471,6 +524,7 @@ async def removeWishlist(context):
         breakout = 1;
     if breakout == 1:
         await context.send("You have not wished for this plot.")
+        await context.message.add_reaction('\U0000274C')
         return
     # Otherwise, remove them:
     wishes = wishes.replace("**" + str(author),'')
@@ -481,6 +535,7 @@ async def removeWishlist(context):
     # Save edited database:
     wardMatrix.to_excel(fileLoc, "Sheet1", index = False, header = True, engine='xlsxwriter')
     
+    await context.message.add_reaction('\U0001F44D')
     return
 
 # Utility functions: 
@@ -650,21 +705,21 @@ async def pandasSantize(wm):
     return wm
 
 # Overarching timer function:
-#@loop(seconds=60)
-#async def timerFunction():
-    #now = datetime.now()
-    #if now.minute == 65: # off for now
-    #    await checkPrimeTimes()
+@loop(seconds=60)
+async def timerFunction():
+    now = datetime.now()
+    if now.minute == 45: # off for now
+        await checkPrimeTimes()
 
 # Triggered at the :55 mark every hour, checks for PTs and sends them.
-#async def checkPrimeTimes():
-    #print("Checking prime times...")
-    #channel = bot.get_channel(783741641944203286)
-    #await channel.send('Prime times are...')
+async def checkPrimeTimes():
+    print("Checking prime times...")
+    channel = bot.get_channel(814653598076108851)
+    await channel.send('Prime times are... still in progress')
     return
     
 # start schedule function
-#timerFunction.start()
+timerFunction.start()
     
 bot.run(TOKEN)
 
@@ -678,15 +733,9 @@ Dict = {
 "balmung": { "DC":"Crystal", "ListChan": 783741641944203286, "PTChan": 6883741644563322}}
 }
 
-> fix PT listings. You know that report time doesn't always mean PT time -10...
-
-> React to wishlist and de-listing messages so the user is aware of actions.
+> fix PT listings range. You know that report time doesn't always mean PT time -10...
 
 > Manual changing of variables in the spreadsheet, e.g. set the PT to a different value.
 > PT ranges?
     > A value in the spreadsheets that reflects the last sweep of the district.
-    
-> Server history in terms of sales
-    > Balmung_History.txt :
-    > [01-04-2021: 6:04 AM] Lavender Beds 05 - 24 [M] Sold at 6:04 AM after being on the market for 17 hours.
 """
