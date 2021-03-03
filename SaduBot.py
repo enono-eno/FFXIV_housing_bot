@@ -89,8 +89,8 @@ async def exampleFunction(context):
     
 # Commands that call for listing properties:
 # open, list, and forsale all do the same thing:
-@bot.command(pass_context = True , aliases=['Open', 'list', 'List', 'forsale', 'Forsale', 'ForSale'])
-async def open(context):
+@bot.command(pass_context = True , aliases=['open','Open', 'list', 'List', 'forsale', 'Forsale', 'ForSale'])
+async def open_plot(context):
     """List a house as being open for purchase."""
     print("open proxy started...")
     await openInternal(context)    
@@ -98,13 +98,13 @@ async def open(context):
     
 # Commands that call for unlisting properties:
 # close, unlist and sold all do the same thing:
-@bot.command(pass_context = True , aliases=['Close', 'unlist', 'Unlist', 'sold', 'Sold', 'sell', 'Sell'])  
-async def close(context):
+@bot.command(pass_context = True , aliases=['close','Close', 'unlist', 'Unlist', 'sold', 'Sold', 'sell', 'Sell'])  
+async def close_plot(context):
     """List a house as being closed to purchases."""
     await closeInternal(context)  
     return
     
-@bot.command(pass_context = True , aliases=['Sweep', 'report','Report', ])      
+@bot.command(pass_context = True , aliases=['Sweep','report','Report', ])      
 async def sweep(context):
     """Display a readout of current server status in terms of open plots."""
     print("Sweep report being generated...")
@@ -136,11 +136,9 @@ async def openInternal(context):
         return
     
     # Read the database spreadsheet:
-    wardMatrix = pandas.read_excel(fileLoc)
+    wardMatrix = pandas.read_excel(fileLoc, engine='openpyxl')
     # Set up some datatypes that confuse pandas:
-    wardMatrix = wardMatrix.astype({'Listing Time': str})
-    wardMatrix = wardMatrix.astype({'ListingID': str})
-    # wardMatrix = wardMatrix.astype({'Wish List': str})
+    wardMatrix = await pandasSantize(wardMatrix)
     
     # See if the ward is already listed:
     isAvail = wardMatrix.at[pNum-1,'Available']
@@ -193,6 +191,29 @@ async def openInternal(context):
     # Save edited database:
     wardMatrix.to_excel(fileLoc, "Sheet1", index = False, header = True, engine='xlsxwriter')
     
+    # Write the log entry:
+    tz = pytz.timezone('EST')
+    now = datetime.now(tz)
+    ptTime = now.hour 
+    ptZone = 'am'
+    if ptTime > 23:
+        ptTime = ptTime - 24
+    if ptTime > 11:
+        ptZone = 'pm'
+    if ptTime > 12:
+        ptTime = ptTime - 12
+    nhour = now.hour
+    if nhour > 12:
+        nhour = nhour - 12
+    
+    logLoc  = await getLogfile(context)
+    logfile = open(logLoc,'a+') 
+    
+    logfile.write("[" + str(now.month) + "-" + str(now.day) + "-" + str(now.year) + " " + str(now.hour) + ":" + str(now.minute)  + "] ")
+    logfile.write(district.capitalize() + " Ward " + str(wNum).zfill(2) + " Plot " + str(pNum).zfill(2) + " [" + wardMatrix.at[pNum-1,'Size'] + "] became available at " + str(nhour).zfill(2) + ":" + str(now.minute).zfill(2) + ptZone + "." + '\n')
+    
+    logfile.close() 
+    
     # done!
     return
 
@@ -207,10 +228,8 @@ async def closeInternal(context):
         return
         
     # Read the database spreadsheet:
-    wardMatrix = pandas.read_excel(fileLoc)
-    wardMatrix = wardMatrix.astype({'Listing Time': str})
-    wardMatrix = wardMatrix.astype({'ListingID': str})
-    wardMatrix = wardMatrix.astype({'Wish List': str})
+    wardMatrix = pandas.read_excel(fileLoc, engine='openpyxl')
+    wardMatrix = await pandasSantize(wardMatrix)
     
     # Check to make sure this plot is actually up for sale:
     isAvail = wardMatrix.at[pNum-1,'Available']
@@ -274,7 +293,7 @@ async def serverStatus(context):
     
     # Prevent reporting if the message didn't come from a plot reporting channel:
     if breakout == 1:
-        print("Exited assignment due to inapporopriate reporting location.")
+        print("Exited assignment due to inappropriate reporting location.")
         return
     
     # figure out what DC and server paths are
@@ -294,7 +313,8 @@ async def serverStatus(context):
     nGobs = 0
     gString = ""
     for file in gGlob:
-        wardMatrix = pandas.read_excel(file)
+        wardMatrix = pandas.read_excel(file, engine='openpyxl')
+        wardMatrix = await pandasSantize(wardMatrix)
         file = re.sub('\D', '', file)
         ward = int(file)
         for i in range(0,59):
@@ -307,7 +327,7 @@ async def serverStatus(context):
         gString = gString[:-1] + "."
     if nGobs == 0:
         gString = "No plots available."
-    gString = "[" + str(nGobs) + "] Goblet: " + gString + '\n'
+    gString = "[" + str(nGobs) + "] " + '\U0001F335' + " Goblet: " + gString + '\n'
     
     print("Sweep report being generated for Lavender Beds...")
     lbFiles = fileLoc + "LavenderBeds/"
@@ -318,7 +338,7 @@ async def serverStatus(context):
     nLavs = 0
     lbString = ""
     for file in lbGlob:
-        wardMatrix = pandas.read_excel(file)
+        wardMatrix = pandas.read_excel(file, engine='openpyxl')
         file = re.sub('\D', '', file)
         ward = int(file)
         for i in range(0,59):
@@ -331,7 +351,7 @@ async def serverStatus(context):
         lbString = lbString[:-1] + "."
     if nLavs == 0:
         lbString = "No plots available."
-    lbString = "[" + str(nLavs) + "] Lavender Beds: " + lbString + '\n'
+    lbString = "[" + str(nLavs) + "] " + '\U0001F333' + " Lavender Beds: " + lbString + '\n'
     
     print("Sweep report being generated for Mist...")
     mFiles = fileLoc + "Mist/"
@@ -342,7 +362,7 @@ async def serverStatus(context):
     nMists = 0
     mString = ""
     for file in mGlob:
-        wardMatrix = pandas.read_excel(file)
+        wardMatrix = pandas.read_excel(file, engine='openpyxl')
         file = re.sub('\D', '', file)
         ward = int(file)
         for i in range(0,59):
@@ -355,7 +375,7 @@ async def serverStatus(context):
         mString = mString[:-1] + "."
     if nMists == 0:
         mString = "No plots available."
-    mString = "[" + str(nMists) + "] Mist: " + mString + '\n'
+    mString = "[" + str(nMists) + "] " + '\U0001F30A' + " Mist: " + mString + '\n'
     
     print("Sweep report being generated for Shirogane...")
     sFiles = fileLoc + "Shirogane/"
@@ -366,7 +386,7 @@ async def serverStatus(context):
     nShiros = 0
     shString = ""
     for file in sGlob:
-        wardMatrix = pandas.read_excel(file)
+        wardMatrix = pandas.read_excel(file, engine='openpyxl')
         file = re.sub('\D', '', file)
         ward = int(file)
         for i in range(0,59):
@@ -379,10 +399,12 @@ async def serverStatus(context):
         shString = shString[:-1] + "."
     if nShiros == 0:
         shString = "No plots available."
-    shString = "[" + str(nShiros) + "] Shirogane: " + shString + '\n'
+    shString = "[" + str(nShiros) + "] " + '\U000026E9' + "Shirogane: " + shString + '\n'
     
-    header = "[" + str(totalPlots) + "] Sweep Report: <all prime times are EST>" + '\n'
-    await context.send(header + gString + lbString + mString + shString)
+    #header = "__Sweep Report: " + str(totalPlots) + " plots are available. <all prime times are EST>" + "__" + '\n'
+    
+    print('Sending report...')
+    # await context.send(header + gString + lbString + mString + shString)
     return
     
 async def addWishlist(context):
@@ -397,12 +419,8 @@ async def addWishlist(context):
         return
         
     # Read the database spreadsheet:
-    wardMatrix = pandas.read_excel(fileLoc)
-    print(wardMatrix)
-    # Fix collumn types:
-    wardMatrix = wardMatrix.astype({'Listing Time': str})
-    wardMatrix = wardMatrix.astype({'ListingID': str})
-    wardMatrix = wardMatrix.astype({'Wish List': str})
+    wardMatrix = pandas.read_excel(fileLoc, engine='openpyxl')
+    wardMatrix = await pandasSantize(wardMatrix)
     
     # Get author's id so we can ping them later:
     author = context.author.id
@@ -440,10 +458,8 @@ async def removeWishlist(context):
         return
         
     # Read the database spreadsheet:
-    wardMatrix = pandas.read_excel(fileLoc)
-    wardMatrix = wardMatrix.astype({'Listing Time': str})
-    wardMatrix = wardMatrix.astype({'ListingID': str})
-    wardMatrix = wardMatrix.astype({'Wish List': str})
+    wardMatrix = pandas.read_excel(fileLoc, engine='openpyxl')
+    wardMatrix = await pandasSantize(wardMatrix)
     
     # Get author's id so we can if they're on the list:
     author = context.author.id
@@ -547,6 +563,37 @@ async def getDatabase(context):
     fileLoc = r"Datacenters/" + dc.capitalize() + "/" + server.capitalize() + "/" + callout + "/" + str(wNum).zfill(2) + ".xlsx"
     # Return all this stuff to the calling function:
     return fileLoc, district, callout, wNum, pNum
+
+    
+async def getLogfile(context):
+    # This function finds the appropriate database file path:
+    fileLoc = "NULL"
+
+    # Get channel name:
+    text = context.channel.name
+    text = text.lower()
+
+    dc = "none"
+    server = "none"
+    
+    # Start a dictionary search. DC_DICT has each DC as a function of the server name.
+    breakout = 1
+    for key in DC_DICT:
+        if key in text:
+            server = key
+            dc = DC_DICT[key]
+            text.replace(key, '')
+            breakout = 0
+    
+    # Prevent reporting if the message didn't come from a plot reporting channel:
+    if breakout == 1:
+        print("Exited assignment due to inapporopriate reporting location.")
+        return fileLoc
+        
+    # Get the file path:
+    fileLoc = r"Datacenters/" + dc.capitalize() + "/" + server.capitalize() + "/logfile.txt"
+    # Return location
+    return fileLoc
     
 async def formatPT(inStr):
     # This returns pt time and am/pm indicator
@@ -581,31 +628,65 @@ async def checkWish(context,wardMatrix,pNum):
                 print("Ran into a wishlist error.")
 
     return
+    
+async def pandasSantize(wm):
+    if 'Plot' not in wm:
+        wm.insert(0, "Plot", 0) 
+        for i in range(0,61):
+            wm.at[i,"Plot"] = i + 1
+    if 'Available' not in wm:
+        wm.insert(3, 'Available', 0) 
+        for i in range(0,61):
+            wm.at[i,'Available'] = 0  
+    if 'Listing Time' not in wm:
+        wm.insert(4, 'Listing Time', 'nan')   
+    if 'ListingID' not in wm:
+        wm.insert(5, 'ListingID', 'nan')     
+    if 'Wish List' not in wm:
+        wm.insert(6, 'Wish List', 'nan')   
+    wm = wm.astype({'Listing Time': str})
+    wm = wm.astype({'Wish List': str})
+    wm = wm.astype({'ListingID': str})
+    return wm
 
 # Overarching timer function:
-@loop(seconds=60)
-async def timerFunction():
-    now = datetime.now()
-    if now.minute == 65: # off for now
-        await checkPrimeTimes()
+#@loop(seconds=60)
+#async def timerFunction():
+    #now = datetime.now()
+    #if now.minute == 65: # off for now
+    #    await checkPrimeTimes()
 
 # Triggered at the :55 mark every hour, checks for PTs and sends them.
-async def checkPrimeTimes():
-    print("Checking prime times...")
-    channel = bot.get_channel(783741641944203286)
-    await channel.send('Prime times are...')
+#async def checkPrimeTimes():
+    #print("Checking prime times...")
+    #channel = bot.get_channel(783741641944203286)
+    #await channel.send('Prime times are...')
     return
     
 # start schedule function
-timerFunction.start()
+#timerFunction.start()
     
 bot.run(TOKEN)
 
 ## TO DO:
 """
+> Timer function for hourly PT updates.
+
 #> Expand Dictionary to include channel ids for _Reporting PTs, Reporting Statuses, and reporting Callouts!
 # how to Example:
 Dict = {
 "balmung": { "DC":"Crystal", "ListChan": 783741641944203286, "PTChan": 6883741644563322}}
 }
+
+> fix PT listings. You know that report time doesn't always mean PT time -10...
+
+> React to wishlist and de-listing messages so the user is aware of actions.
+
+> Manual changing of variables in the spreadsheet, e.g. set the PT to a different value.
+> PT ranges?
+    > A value in the spreadsheets that reflects the last sweep of the district.
+    
+> Server history in terms of sales
+    > Balmung_History.txt :
+    > [01-04-2021: 6:04 AM] Lavender Beds 05 - 24 [M] Sold at 6:04 AM after being on the market for 17 hours.
 """
