@@ -64,7 +64,7 @@ bot = commands.Bot(command_prefix='##', description=description)
 DC_LOC = "/DataCenters"
 
 # This is our database of what servers are on what datacenters:
-with open('datacenter_dictionary.txt') as f: 
+with open('datacenter_dictionary2.txt') as f: 
     data = f.read() 
 DC_DICT  = json.loads(data) 
     
@@ -116,10 +116,21 @@ async def wish(context):
     await addWishlist(context) 
     return
     
-@bot.command(pass_context = True , aliases=['unwishlist', 'Unwishlist', 'Unwish'])      
+@bot.command(pass_context = True, aliases=['unwishlist', 'Unwishlist', 'Unwish'])      
 async def unwish(context):
     """When used, your name will be written down and pinged when a particular plot is opened."""
     await removeWishlist(context) 
+    return
+    
+## Only admins can call these commands:
+# This commands is meant to save the admins time assigning channels for primetime and sweep announcements in the DC_DICT dictionary. 
+@bot.command(pass_context = True) 
+@commands.has_role("Admin")  # Only for admin use.
+async def assemble_reports(context):    
+    # scan channel names:
+    await getReportingChannels(context)
+    # :thumbsup: when done:
+    await context.message.add_reaction('\U0001F44D')
     return
 
 ## Events: 
@@ -335,7 +346,7 @@ async def serverStatus(context):
     for key in DC_DICT:
         if key in text:
             server = key
-            dc = DC_DICT[key]
+            dc = DC_DICT[key]['datacenter']
             text.replace(key, '')
             breakout = 0
     
@@ -556,7 +567,7 @@ async def getDatabase(context):
     for key in DC_DICT:
         if key in text:
             server = key
-            dc = DC_DICT[key]
+            dc = DC_DICT[key]['datacenter']
             text.replace(key, '')
             breakout = 0
     
@@ -636,7 +647,7 @@ async def getLogfile(context):
     for key in DC_DICT:
         if key in text:
             server = key
-            dc = DC_DICT[key]
+            dc = DC_DICT[key]['datacenter']
             text.replace(key, '')
             breakout = 0
     
@@ -684,7 +695,9 @@ async def checkWish(context,wardMatrix,pNum):
 
     return
     
+ 
 async def pandasSantize(wm):
+    # This is to make sure that pandas doesn't run into any errors because of old or bad spreadsheets.
     if 'Plot' not in wm:
         wm.insert(0, "Plot", 0) 
         for i in range(0,61):
@@ -695,43 +708,61 @@ async def pandasSantize(wm):
             wm.at[i,'Available'] = 0  
     if 'Listing Time' not in wm:
         wm.insert(4, 'Listing Time', 'nan')   
+    if 'Last Sweep' not in wm:
+        wm.insert(5, 'Last Sweep', 'nan')   
     if 'ListingID' not in wm:
-        wm.insert(5, 'ListingID', 'nan')     
+        wm.insert(6, 'ListingID', 'nan')     
     if 'Wish List' not in wm:
-        wm.insert(6, 'Wish List', 'nan')   
+        wm.insert(7, 'Wish List', 'nan')   
     wm = wm.astype({'Listing Time': str})
+    wm = wm.astype({'Last Sweep': str})
     wm = wm.astype({'Wish List': str})
     wm = wm.astype({'ListingID': str})
     return wm
 
+async def getReportingChannels(context):
+    # Get the channels in the 'guild' or server:
+    listOfChannels = context.guild.channels
+    # Go through them one by one:
+    for c in listOfChannels:
+        # See if they're sweep channels:
+        if 'sweep' in c.name:
+            # See which key is in their name:
+            for key in DC_DICT:
+                if key in c.name:
+                    # Write down the channel id in the server's dictionary:
+                    DC_DICT[key]["reporting channel"] = str(c.id)
+    
+    # Rewrite the dictionary:
+    with open("datacenter_dictionary.txt", "w") as outfile:  
+        json.dump(DC_DICT, outfile) 
+
 # Overarching timer function:
 @loop(seconds=60)
 async def timerFunction():
+    print('checking time...')
     now = datetime.now()
-    if now.minute == 45: # off for now
+    print('checking time... oh, it\'s ' + str(now))
+    if now.minute == 22: # off for now
         await checkPrimeTimes()
+    return
 
 # Triggered at the :55 mark every hour, checks for PTs and sends them.
 async def checkPrimeTimes():
     print("Checking prime times...")
-    channel = bot.get_channel(814653598076108851)
+    channel = bot.fetch_channel(814653598076108851)
+    print(channel)
     await channel.send('Prime times are... still in progress')
     return
-    
+  
 # start schedule function
 timerFunction.start()
-    
+  
 bot.run(TOKEN)
 
 ## TO DO:
 """
 > Timer function for hourly PT updates.
-
-#> Expand Dictionary to include channel ids for _Reporting PTs, Reporting Statuses, and reporting Callouts!
-# how to Example:
-Dict = {
-"balmung": { "DC":"Crystal", "ListChan": 783741641944203286, "PTChan": 6883741644563322}}
-}
 
 > fix PT listings range. You know that report time doesn't always mean PT time -10...
 
