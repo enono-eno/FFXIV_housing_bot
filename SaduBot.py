@@ -169,7 +169,7 @@ async def openInternal(context):
     # If it isn't already listed... list it!
     if isAvail == 0:
         # Get time:
-        tz = pytz.timezone('EST')
+        tz = pytz.timezone('US/Eastern')
         now = datetime.now(tz)
         wardMatrix.at[pNum-1,'Listing Time'] = str(now.month) + '/' + str(now.day) + '/' + str(now.hour)
         wardMatrix.at[pNum-1,'Available'] = 1
@@ -211,7 +211,7 @@ async def openInternal(context):
     wardMatrix.to_excel(fileLoc, "Sheet1", index = False, header = True, engine='xlsxwriter')
     
     # Write the log entry:
-    tz = pytz.timezone('EST')
+    tz = pytz.timezone('US/Eastern')
     now = datetime.now(tz)
     ptTime = now.hour 
     ptZone = 'am'
@@ -269,7 +269,7 @@ async def closeInternal(context):
     formerContent = fMessage.content 
     
     # Timestamp the sale:
-    tz = pytz.timezone('EST')
+    tz = pytz.timezone('US/Eastern')
     now = datetime.now(tz)
     hour = now.hour
     tzStamp = 'am'
@@ -287,7 +287,7 @@ async def closeInternal(context):
     wardMatrix.to_excel(fileLoc, "Sheet1", index = False, header = True, engine='xlsxwriter')
     
     # Write the log entry:
-    tz = pytz.timezone('EST')
+    tz = pytz.timezone('US/Eastern')
     now = datetime.now(tz)
     ptTime = now.hour 
     ptZone = 'am'
@@ -376,7 +376,7 @@ async def serverStatus(context):
         wardMatrix = await pandasSantize(wardMatrix)
         file = re.sub('\D', '', file)
         ward = int(file)
-        for i in range(0,59):
+        for i in range(0,60):
             if wardMatrix.at[i,'Available'] == 1:
                 totalPlots = totalPlots + 1
                 nGobs = nGobs + 1
@@ -400,7 +400,7 @@ async def serverStatus(context):
         wardMatrix = pandas.read_excel(file, engine='openpyxl')
         file = re.sub('\D', '', file)
         ward = int(file)
-        for i in range(0,59):
+        for i in range(0,60):
             if wardMatrix.at[i,'Available'] == 1:
                 totalPlots = totalPlots + 1
                 nLavs = nLavs + 1
@@ -424,7 +424,7 @@ async def serverStatus(context):
         wardMatrix = pandas.read_excel(file, engine='openpyxl')
         file = re.sub('\D', '', file)
         ward = int(file)
-        for i in range(0,59):
+        for i in range(0,60):
             if wardMatrix.at[i,'Available'] == 1:
                 totalPlots = totalPlots + 1
                 nMists = nMists + 1
@@ -448,7 +448,7 @@ async def serverStatus(context):
         wardMatrix = pandas.read_excel(file, engine='openpyxl')
         file = re.sub('\D', '', file)
         ward = int(file)
-        for i in range(0,59):
+        for i in range(0,60):
             if wardMatrix.at[i,'Available'] == 1:
                 totalPlots = totalPlots + 1
                 nShiros = nShiros + 1
@@ -741,23 +741,62 @@ async def getReportingChannels(context):
 @loop(seconds=60)
 async def timerFunction():
     now = datetime.now()
-    print('checking time... oh, it\'s ' + str(now))
-    if now.minute == 5: # off for now
+    if now.minute == 55: 
         await checkPrimeTimes()
     return
 
 # Triggered at the :55 mark every hour, checks for PTs and sends them.
 async def checkPrimeTimes():
     print("Checking prime times...")
+    tz = pytz.timezone('US/Eastern')
+    now = datetime.now(tz)
+    print(now)
+    
     for key in DC_DICT:
-        channel = bot.fetch_channel(DC_DICT[key]['reporting channel'])
-        DC = DC_DICT[key]['datacenter']
+        reportingStr = ""
+        c = DC_DICT[key]['reporting channel']
+        if float(c) <= 0:
+            continue
+        channel = await bot.fetch_channel(c)
+        dc = DC_DICT[key]['datacenter']
         server = key
         print(channel)
-        await channel.send('Prime times!!!')
+        for division in ["Goblet", "LavenderBeds", "Mist", "Shirogane"]:
+            for wNum in range(1,25):
+                fileLoc = r"Datacenters/" + dc.capitalize() + "/" + server.capitalize() + "/" + division + "/" + str(wNum).zfill(2) + ".xlsx"
+                wardMatrix = pandas.read_excel(fileLoc, engine='openpyxl')
+                for i in range(0,60):
+                    if wardMatrix.at[i,'Available'] == 1:
+                        sp = wardMatrix.at[i,'Listing Time']
+                        # print(division + " " + str(wNum) + " " + str(i))
+                        # print(sp)
+                        sp = sp.split("/")
+                        # Prime time is presumed to be the report time + 10 hours.
+                        PT = int(sp[2])
+                        if (PT-1) == now.hour:
+                            reportingStr = reportingStr + division + ", [" + wardMatrix.at[i,'Size'] + "] Ward " + str(wNum) + " Plot " + str(i+1) + " "
+                            # Load the wishlist:
+                            
+                            wishes = wardMatrix.at[i,"Wish List"]
+                            print(wishes)
+                            if len(str(wishes))>3:
+                                # Get all the wishers:
+                                toCalls = wishes.split("**")
+                                # call them up:
+                                for j in toCalls:
+                                    if j.isnumeric():
+                                        # I know that this is going to fail at some point, so...
+                                        try:
+                                            m = await bot.fetch_user(int(j))
+                                            reportingStr = reportingStr + ">> " + m.mention + " "
+                                        except:
+                                            print("Ran into a wishlist error.")
+                            reportingStr = reportingStr + '\n'
+                            
+        if len(reportingStr) > 0:
+            reportingStr = "__The following plots will be in prime time in the upcoming hour:__" + '\n' + reportingStr
+            await channel.send(reportingStr)
         
-       
-    
     return
   
 # start schedule function
@@ -774,4 +813,6 @@ bot.run(TOKEN)
 > Manual changing of variables in the spreadsheet, e.g. set the PT to a different value.
 > PT ranges?
     > A value in the spreadsheets that reflects the last sweep of the district.
+
+> Auto-assembly for the data structure...
 """
