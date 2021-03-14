@@ -67,6 +67,11 @@ DC_LOC = "/DataCenters"
 with open('datacenter_dictionary.txt') as f: 
     data = f.read() 
 DC_DICT  = json.loads(data) 
+
+# Where are the COOKIES logged?
+with open('playerCookies.txt') as f: 
+    data = f.read() 
+    COOKIES  = json.loads(data) 
     
 # This goes into the console on login:
 @bot.event
@@ -121,6 +126,18 @@ async def unwish(context):
     """When used, your name will be written down and pinged when a particular plot is opened."""
     await removeWishlist(context) 
     return
+
+@bot.command(pass_context = True, aliases=['Cookies'])      
+async def cookies(context):
+    """Checks to see how many cookies you have."""
+    author = str(context.author.id)    
+    c = 0;
+    if author in COOKIES.keys(): 
+        c = COOKIES[author]
+        await context.send("You have " + str(c) + " cookies. Good job!")
+    else: 
+        await context.send("You don't have any cookies, report open plots to get some.")
+    return   
     
 ## Only admins can call these commands:
 # This commands is meant to save the admins time assigning channels for primetime and sweep announcements in the DC_DICT dictionary. 
@@ -182,6 +199,15 @@ async def openInternal(context):
             ptZone = 'pm'
         if ptTime > 12:
             ptTime = ptTime - 12
+            
+        author = context.author.id    
+        if author in COOKIES.keys(): 
+            COOKIES[author] += 1 
+        else: 
+            COOKIES[author] = 1
+        with open("playerCookies.txt", "w") as outfile:  
+            json.dump(COOKIES, outfile) 
+        
 
     # Look up house size:
     hVal = wardMatrix.at[pNum-1,'Size']
