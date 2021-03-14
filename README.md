@@ -17,9 +17,9 @@ What else do you want to know?
 >> 2. Either install anaconda on your comptuer, or on a VPS, or another remote bot hosting site, like... https://pebblehost.com/bot-hosting for example. Use discord.py / Python hosting.
 >> 3. Create a virtual environment "> conda create -n yourenvname "
 >> 4. Get into the environment by using "> conda activate yourenvname "
->> 5. Navigate to the location you downloaded this repository to "> cd C:\Users\Sadu\Desktop\SaduBot"
+>> 5. Navigate to the location you downloaded this repository to "> cd C:\Users\Sadu\Desktop\HousingBot"
 >> 6. Install pip "> conda install pip "
 >> 7. Use pip to install the dependencies "> pip install -r requirements.txt "
 >> 8. Write down your API token in a file called "token.txt" and save it in the repository folder.
 >> 9. Make a folder called "Datacenters", and a subfolder inside that called "Crystal", then addwhatever your server's name is, e.g. "Balmung" to that. The subdivision folders included here need to go into that. Sorry, this is Github's fault.
->> 10. Run "> python.exe SaduBot.py "
+>> 10. Run "> python.exe HousingBot.py "
