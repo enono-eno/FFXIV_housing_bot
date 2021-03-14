@@ -740,7 +740,6 @@ async def getReportingChannels(context):
 # Overarching timer function:
 @loop(seconds=60)
 async def timerFunction():
-    print('checking time...')
     now = datetime.now()
     print('checking time... oh, it\'s ' + str(now))
     if now.minute == 22: # off for now
