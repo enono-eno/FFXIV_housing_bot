@@ -11,3 +11,14 @@ I chose to have this bot react to ## +  a command, you can change this on line 6
 change the command_prefix setting to change the reactive prefix.
 
 What else do you want to know?
+
+>> How to install this in an independent discord bot for private use:
+>> 1. Set up a discord bot: "How to Create a Discord Bot Account" from https://www.freecodecamp.org/news/create-a-discord-bot-with-python/
+>> 2. Either install anaconda on your comptuer, or on a VPS, or another remote bot hosting site, like... https://pebblehost.com/bot-hosting for example. Use discord.py / Python hosting.
+>> 3. Create a virtual environment "> conda create -n yourenvname "
+>> 4. Get into the environment by using "> conda activate yourenvname "
+>> 5. Navigate to the location you downloaded this repository to "> cd C:\Users\Sadu\Desktop\SaduBot"
+>> 6. Install pip "> conda install pip "
+>> 7. Use pip to install the dependencies "> pip install -r requirements.txt "
+>> 8. Write down your API token in a file called "token.txt" and save it in the repository folder.
+>> 9. Run "> python.exe SaduBot.py "
