@@ -64,7 +64,7 @@ bot = commands.Bot(command_prefix='##', description=description)
 DC_LOC = "/DataCenters"
 
 # This is our database of what servers are on what datacenters:
-with open('datacenter_dictionary2.txt') as f: 
+with open('datacenter_dictionary.txt') as f: 
     data = f.read() 
 DC_DICT  = json.loads(data) 
     
@@ -742,16 +742,22 @@ async def getReportingChannels(context):
 async def timerFunction():
     now = datetime.now()
     print('checking time... oh, it\'s ' + str(now))
-    if now.minute == 22: # off for now
+    if now.minute == 5: # off for now
         await checkPrimeTimes()
     return
 
 # Triggered at the :55 mark every hour, checks for PTs and sends them.
 async def checkPrimeTimes():
     print("Checking prime times...")
-    channel = bot.fetch_channel(814653598076108851)
-    print(channel)
-    await channel.send('Prime times are... still in progress')
+    for key in DC_DICT:
+        channel = bot.fetch_channel(DC_DICT[key]['reporting channel'])
+        DC = DC_DICT[key]['datacenter']
+        server = key
+        print(channel)
+        await channel.send('Prime times!!!')
+        
+       
+    
     return
   
 # start schedule function
