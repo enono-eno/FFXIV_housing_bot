@@ -26,3 +26,10 @@ What else do you want to know?
   >> 9a. Just to be clear, *you* need to set up the paths like this "HousingBot\Datacenters\Crystal\Balmung\Goblet\01.xlsx" for example
   >> 9b. The general form is <BotLocation>\Datacenters\<DatacenterName<ServerName>\<HousingDistictName>\<WardNumberwithZerosPadding>.xlsx
 >> 10. Run "> python.exe HousingBot.py "
+
+
+
+>> Some "unfinished features" that are still in the works:
+>> 1. Currently, prime times are reported relative to the time when the house is reported, but this range can be much earlier if no one has 'sweeped' in a while. I'd like the bot to report the earliest and latest possible onset of prime time, but it's a text parsing/recording problem that is sort of annoying to program.
+>> 2. The datastructure is annoying, I could make it so the bot automatically assembled the files fairly easily. This is a QOL feature that I'm working on...
+>> 3. Let players manually edit some thing, like when the prime time will start. This is mostly for when there are known transfers. The current bot always assumes that the house became available from 'abandonment', so it doesn't really pay attention to minute values. This isn't a *huge* deal, but every minute counts on some servers.
