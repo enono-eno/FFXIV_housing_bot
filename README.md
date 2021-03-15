@@ -1,5 +1,6 @@
 # FFXIV_housing_bot
 This is a discord bot that keeps track of housing availability. 
+Message me at Eno#6033 with questions.
 
 I don't know how README.md works.
 
